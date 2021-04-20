@@ -1,0 +1,48 @@
+server:  
+    port: 82 #注意gateway项目端口一般都80(http)或者443(https)
+spring: 
+    application: 
+        name: mayikt-gateway #服务网关名称
+    cloud: 
+        gateway: 
+            discovery: 
+                locator: 
+                    enable: true # 开启以服务id去注册中心上获取转发地址
+            routes: #路由策略
+                 - id: member #路由ID
+                   ##转发http://www.mayikt.com/(注意com后面带杠/和不带杠/区别很大),在浏览器上面访问127.0.0.1/mayikt会转发到http://www.mayikt.com/mayikt
+                   #uri: http://www.mayikt.com
+                   uri: lb://meitemayikt-member #lb是负载均衡的意思,访问注册中心上面的mayikt-member服务
+                   filters: #访问前缀
+                       - StripPrefix=1
+                   predicates: 
+                       - Path=/member/**
+                 - id: mayiktAfter 
+                   uri: http://www.mayikt.com/
+                   predicates: 
+                   #在2017-01-20T17:42:47.789-07:00之后访问网关都会跳到http://www.mayikt.com/这个网站上面去
+                   - After=2030-01-20T17:42:47.789-07:00[America/Denver]
+                 - id: host_mayikt
+                   uri: lb://meitemayikt-member
+                   predicates: 
+                   - Host=gateway.mayikt.com:82,**.anotherhost.org
+                 - id: weight_member
+                   uri: lb://meitemayikt-member
+                   predicates: 
+                   - Weight=group1, 8
+                 - id: weight_order
+                   uri: lb://meitemayikt-order
+                   predicates: 
+                   - Weight=group1, 2
+                 - id: mayikt_sentinel_gateway
+                   uri: http://www.mayikt.com/
+                   predicates: 
+                   - Path=/mayikt/**
+        nacos: 
+            discovery: 
+                server-addr: 127.0.0.1:8848
+    datasource: 
+        url: jdbc:mysql://localhost:3306/meite_gateway?useUnicode=true&characterEncoding=UTF-8
+        username: root
+        password: root
+        driver-class-name: com.mysql.jdbc.Driver
